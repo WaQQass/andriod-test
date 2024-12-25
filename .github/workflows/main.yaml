@@ -14,13 +14,6 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # Set up Java JDK 17
-      - name: Set up Java
-        uses: actions/setup-java@v3
-        with:
-          java-version: 17
-          distribution: temurin
-
       # Set up Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v3
@@ -30,20 +23,31 @@ jobs:
       # Install dependencies
       - name: Install Dependencies
         run: |
-          sudo apt update && sudo apt upgrade -y
-          sudo apt install -y unzip curl openjdk-11-jdk nodejs npm watchman
           npm install -g yarn
-          
-          # Install Android Command Line Tools
-          sudo mkdir -p /usr/lib/android-sdk/cmdline-tools
-          cd /usr/lib/android-sdk
+          npm install -g react-native-cli
+          yarn install
+          cd android
+          chmod +x gradlew
+
+      # Install Android Command Line Tools in a directory with full access
+      - name: Install Android SDK
+        run: |
+          # Create a directory in the user's home directory where we have full access
+          mkdir -p $HOME/android-sdk/cmdline-tools
+          cd $HOME/android-sdk
+
+          # Download Android Command Line Tools
           wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-          sudo unzip commandlinetools-linux-9477386_latest.zip -d cmdline-tools
-          sudo mv cmdline-tools/cmdline-tools /usr/lib/android-sdk/cmdline-tools/latest
+
+          # Extract and move the files to the correct location
+          unzip commandlinetools-linux-9477386_latest.zip -d cmdline-tools
+          mv cmdline-tools/cmdline-tools $HOME/android-sdk/cmdline-tools/latest
+
+          # Clean up the zip file
           rm -f commandlinetools-linux-9477386_latest.zip
 
           # Add Android SDK to PATH
-          echo 'export ANDROID_HOME=/usr/lib/android-sdk' >> ~/.bashrc
+          echo 'export ANDROID_HOME=$HOME/android-sdk' >> ~/.bashrc
           echo 'export PATH=$PATH:$ANDROID_HOME/emulator:$ANDROID_HOME/tools:$ANDROID_HOME/tools/bin:$ANDROID_HOME/platform-tools' >> ~/.bashrc
           source ~/.bashrc
 
@@ -53,21 +57,14 @@ jobs:
           # Install required Android SDK components
           sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
 
-      # Install project dependencies
-      - name: Install Project Dependencies
-        run: |
-          cd MyApp
-          yarn install
-
-      # Build the APK (debug)
+      # Build Debug APK
       - name: Build Debug APK
-        run: |
-          cd MyApp/android
-          ./gradlew assembleDebug
+        run: ./gradlew assembleDebug
+        working-directory: android
 
-      # Upload the APK as an artifact
+      # Upload APK as an artifact
       - name: Upload APK
         uses: actions/upload-artifact@v3
         with:
           name: debug-apk
-          path: MyApp/android/app/build/outputs/apk/debug/app-debug.apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
