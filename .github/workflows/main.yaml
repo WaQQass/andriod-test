@@ -14,33 +14,60 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
+      # Set up Java JDK 17
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          java-version: 17
+          distribution: temurin
+
       # Set up Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 18
 
-      # Set up Java 17
-      - name: Set up Java 17
-        uses: actions/setup-java@v3
-        with:
-          java-version: '17'
-
       # Install dependencies
       - name: Install Dependencies
         run: |
+          sudo apt update && sudo apt upgrade -y
+          sudo apt install -y unzip curl openjdk-11-jdk nodejs npm watchman
+          npm install -g yarn
+          
+          # Install Android Command Line Tools
+          sudo mkdir -p /usr/lib/android-sdk/cmdline-tools
+          cd /usr/lib/android-sdk
+          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+          sudo unzip commandlinetools-linux-9477386_latest.zip -d cmdline-tools
+          sudo mv cmdline-tools/cmdline-tools /usr/lib/android-sdk/cmdline-tools/latest
+          rm -f commandlinetools-linux-9477386_latest.zip
+
+          # Add Android SDK to PATH
+          echo 'export ANDROID_HOME=/usr/lib/android-sdk' >> ~/.bashrc
+          echo 'export PATH=$PATH:$ANDROID_HOME/emulator:$ANDROID_HOME/tools:$ANDROID_HOME/tools/bin:$ANDROID_HOME/platform-tools' >> ~/.bashrc
+          source ~/.bashrc
+
+          # Accept Android SDK licenses
+          yes | sdkmanager --licenses
+
+          # Install required Android SDK components
+          sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
+
+      # Install project dependencies
+      - name: Install Project Dependencies
+        run: |
+          cd MyApp
           yarn install
-          cd android
-          chmod +x gradlew
 
-      # Build APK
+      # Build the APK (debug)
       - name: Build Debug APK
-        run: ./gradlew assembleDebug
-        working-directory: android
+        run: |
+          cd MyApp/android
+          ./gradlew assembleDebug
 
-      # Upload APK as an artifact
+      # Upload the APK as an artifact
       - name: Upload APK
         uses: actions/upload-artifact@v3
         with:
           name: debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: MyApp/android/app/build/outputs/apk/debug/app-debug.apk
