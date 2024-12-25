@@ -48,8 +48,11 @@ jobs:
 
           # Add Android SDK to PATH
           echo 'export ANDROID_HOME=$HOME/android-sdk' >> ~/.bashrc
-          echo 'export PATH=$PATH:$ANDROID_HOME/emulator:$ANDROID_HOME/tools:$ANDROID_HOME/tools/bin:$ANDROID_HOME/platform-tools' >> ~/.bashrc
+          echo 'export PATH=$PATH:$ANDROID_HOME/emulator:$ANDROID_HOME/tools:$ANDROID_HOME/tools/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-tools/latest/bin' >> ~/.bashrc
           source ~/.bashrc
+
+          # Verify sdkmanager is available
+          which sdkmanager
 
           # Accept Android SDK licenses
           yes | sdkmanager --licenses
