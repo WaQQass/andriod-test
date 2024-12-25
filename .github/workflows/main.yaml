@@ -1,73 +1,57 @@
-name: Build React Native APK
+name: Build Android App
 
 on:
   push:
-    branches:
-      - main
 
 jobs:
-  build-android:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout the repository
-      - name: Checkout Code
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Set up Node.js
-      - name: Set up Node.js
+      - name: Set current date as env variable
+        run: echo "date_today=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
+
+      - name: Set repository name as env variable
+        run: echo "repository_name=$(echo '${{ github.repository }}' | awk -F '/' '{print $2}')" >> $GITHUB_ENV
+
+      - name: Setup JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '11'
+
+      - name: Setup Node
         uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: 16.x
 
-      # Install dependencies
-      - name: Install Dependencies
+      - name: Install dependencies
+        run: yarn install
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v2
+
+      - name: Build Android APK
         run: |
-          npm install -g yarn
-          npm install -g react-native-cli
-          yarn install
           cd android
-          chmod +x gradlew
+          ./gradlew assembleRelease
 
-      # Install Android Command Line Tools in a directory with full access
-      - name: Install Android SDK
+      - name: Build Android AAB
         run: |
-          # Create a directory in the user's home directory where we have full access
-          mkdir -p $HOME/android-sdk/cmdline-tools
-          cd $HOME/android-sdk
+          cd android
+          ./gradlew bundleRelease
 
-          # Download Android Command Line Tools
-          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
-
-          # Extract and move the files to the correct location
-          unzip commandlinetools-linux-9477386_latest.zip -d cmdline-tools
-          mv cmdline-tools/cmdline-tools $HOME/android-sdk/cmdline-tools/latest
-
-          # Clean up the zip file
-          rm -f commandlinetools-linux-9477386_latest.zip
-
-          # Add Android SDK to PATH
-          echo 'export ANDROID_HOME=$HOME/android-sdk' >> ~/.bashrc
-          echo 'export PATH=$PATH:$ANDROID_HOME/emulator:$ANDROID_HOME/tools:$ANDROID_HOME/tools/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-tools/latest/bin' >> ~/.bashrc
-          source ~/.bashrc
-
-          # Verify sdkmanager is available
-          which sdkmanager
-
-          # Accept Android SDK licenses
-          yes | sdkmanager --licenses
-
-          # Install required Android SDK components
-          sdkmanager "platform-tools" "platforms;android-33" "build-tools;33.0.2"
-
-      # Build Debug APK
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug
-        working-directory: android
-
-      # Upload APK as an artifact
-      - name: Upload APK
+      - name: Upload APK Release - ${{ env.repository_name }}
         uses: actions/upload-artifact@v3
         with:
-          name: debug-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: ${{ env.date_today }} - ${{ env.repository_name }} - APK(s) release generated
+          path: android/app/build/outputs/apk/release/
+
+      - name: Upload AAB (App Bundle) Release - ${{ env.repository_name }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.date_today }} - ${{ env.repository_name }} - App bundle(s) AAB release generated
+          path: android/app/build/outputs/bundle/release/
